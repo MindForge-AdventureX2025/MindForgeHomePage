@@ -6,10 +6,11 @@ function SiriBreathingOrb({ duration = 4000 }) {
   const [phase, setPhase] = useState('inhale');
   const [progress, setProgress] = useState(0);
   const [colorIndex, setColorIndex] = useState(0);
-  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [colorTransitionProgress, setColorTransitionProgress] = useState(0);
   const requestRef = useRef();
   const startTime = useRef();
-  const cycleCountRef = useRef(0); // 使用 ref 避免重复触发
+  const cycleCountRef = useRef(0);
+  const colorTransitionRef = useRef(false);
 
   // Siri风格的颜色组合 - 更自然的渐变色彩
   const colorSchemes = [
@@ -53,6 +54,37 @@ function SiriBreathingOrb({ duration = 4000 }) {
 
   const currentColors = colorSchemes[colorIndex];
   const nextColors = colorSchemes[(colorIndex + 1) % colorSchemes.length];
+  
+  // 混合当前颜色和下一个颜色
+  const mixColors = (color1, color2, ratio) => {
+    if (ratio === 0) return color1;
+    if (ratio === 1) return color2;
+    
+    // 简单的颜色混合 - 在实际项目中可以使用更复杂的颜色混合算法
+    const hex1 = color1.replace('#', '');
+    const hex2 = color2.replace('#', '');
+    
+    const r1 = parseInt(hex1.substr(0, 2), 16);
+    const g1 = parseInt(hex1.substr(2, 2), 16);
+    const b1 = parseInt(hex1.substr(4, 2), 16);
+    
+    const r2 = parseInt(hex2.substr(0, 2), 16);
+    const g2 = parseInt(hex2.substr(2, 2), 16);
+    const b2 = parseInt(hex2.substr(4, 2), 16);
+    
+    const r = Math.round(r1 + (r2 - r1) * ratio);
+    const g = Math.round(g1 + (g2 - g1) * ratio);
+    const b = Math.round(b1 + (b2 - b1) * ratio);
+    
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  };
+  
+  const displayColors = {
+    primary: mixColors(currentColors.primary, nextColors.primary, colorTransitionProgress),
+    secondary: mixColors(currentColors.secondary, nextColors.secondary, colorTransitionProgress),
+    tertiary: mixColors(currentColors.tertiary, nextColors.tertiary, colorTransitionProgress),
+    name: colorTransitionProgress < 0.5 ? currentColors.name : nextColors.name
+  };
 
   useEffect(() => {
     let animationFrame;
@@ -63,22 +95,32 @@ function SiriBreathingOrb({ duration = 4000 }) {
       let percent = Math.min(elapsed / duration, 1);
       setProgress(percent);
       
+      // 在吸气阶段进行颜色过渡
+      if (phase === 'inhale' && colorTransitionRef.current) {
+        setColorTransitionProgress(percent);
+      }
+      
       if (percent < 1) {
         animationFrame = requestAnimationFrame(animateBreath);
       } else {
         const newPhase = phase === 'inhale' ? 'exhale' : 'inhale';
         setPhase(newPhase);
         
-        // 只在完成一个完整的吸气+呼气循环后切换颜色
+        // 在吸气开始时启动颜色过渡
         if (newPhase === 'inhale') {
           cycleCountRef.current++;
-          const newColorIndex = cycleCountRef.current % colorSchemes.length;
-          if (newColorIndex !== colorIndex) {
-            setIsTransitioning(true);
-            setTimeout(() => {
-              setColorIndex(newColorIndex);
-              setIsTransitioning(false);
-            }, 200);
+          const shouldChangeColor = cycleCountRef.current % 2 === 0; // 每两个循环切换一次颜色
+          
+          if (shouldChangeColor) {
+            colorTransitionRef.current = true;
+            setColorTransitionProgress(0);
+          }
+        } else {
+          // 呼气结束，完成颜色过渡
+          if (colorTransitionRef.current) {
+            setColorIndex((prev) => (prev + 1) % colorSchemes.length);
+            setColorTransitionProgress(0);
+            colorTransitionRef.current = false;
           }
         }
         
@@ -88,7 +130,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
     }
     animationFrame = requestAnimationFrame(animateBreath);
     return () => cancelAnimationFrame(animationFrame);
-  }, [phase, duration, colorSchemes.length, colorIndex]);
+  }, [phase, duration, colorSchemes.length]);
 
   // 计算缩放比例 (0.8 到 1.4) - 实时跟随呼吸进度
   const scaleMin = 0.8, scaleMax = 1.4;
@@ -110,8 +152,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
           style={{
             transform: `scale(${scale * 1.6})`,
             opacity: glowIntensity * 0.4,
-            background: `radial-gradient(circle, ${currentColors.tertiary}20 0%, transparent 70%)`,
-            transition: isTransitioning ? 'background 0.8s ease-in-out' : 'none'
+            background: `radial-gradient(circle, ${displayColors.tertiary}20 0%, transparent 70%)`
           }}
         />
         
@@ -121,8 +162,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
           style={{
             transform: `scale(${scale * 1.3})`,
             opacity: glowIntensity * 0.6,
-            background: `radial-gradient(circle, ${currentColors.secondary}30 0%, transparent 60%)`,
-            transition: isTransitioning ? 'background 0.8s ease-in-out' : 'none'
+            background: `radial-gradient(circle, ${displayColors.secondary}30 0%, transparent 60%)`
           }}
         />
         
@@ -134,19 +174,18 @@ function SiriBreathingOrb({ duration = 4000 }) {
             background: `
               radial-gradient(
                 circle at 30% 30%, 
-                ${currentColors.primary}ff 0%, 
-                ${currentColors.secondary}cc 40%, 
-                ${currentColors.tertiary}88 70%,
+                ${displayColors.primary}ff 0%, 
+                ${displayColors.secondary}cc 40%, 
+                ${displayColors.tertiary}88 70%,
                 transparent 100%
               )
             `,
             boxShadow: `
-              0 0 ${60 * glowIntensity}px ${currentColors.primary}66,
-              0 0 ${100 * glowIntensity}px ${currentColors.secondary}44,
-              0 0 ${140 * glowIntensity}px ${currentColors.tertiary}22,
-              inset 0 0 40px ${currentColors.primary}33
-            `,
-            transition: isTransitioning ? 'background 0.8s ease-in-out, box-shadow 0.8s ease-in-out' : 'none'
+              0 0 ${60 * glowIntensity}px ${displayColors.primary}66,
+              0 0 ${100 * glowIntensity}px ${displayColors.secondary}44,
+              0 0 ${140 * glowIntensity}px ${displayColors.tertiary}22,
+              inset 0 0 40px ${displayColors.primary}33
+            `
           }}
         >
           {/* 内部流动效果 */}
@@ -156,13 +195,12 @@ function SiriBreathingOrb({ duration = 4000 }) {
               background: `
                 conic-gradient(
                   from ${progress * 360}deg,
-                  ${currentColors.primary}40 0deg,
-                  ${currentColors.secondary}60 120deg,
-                  ${currentColors.tertiary}40 240deg,
-                  ${currentColors.primary}40 360deg
+                  ${displayColors.primary}40 0deg,
+                  ${displayColors.secondary}60 120deg,
+                  ${displayColors.tertiary}40 240deg,
+                  ${displayColors.primary}40 360deg
                 )
-              `,
-              transition: isTransitioning ? 'background 0.8s ease-in-out' : 'none'
+              `
             }}
           />
           
@@ -213,7 +251,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
         }}
       >
         <span className="phase-text">{phase === 'inhale' ? '吸气' : '呼气'}</span>
-        <span className="color-name">{currentColors.name}</span>
+        <span className="color-name">{displayColors.name}</span>
       </motion.div>
     </div>
   );
