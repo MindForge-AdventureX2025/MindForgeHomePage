@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
@@ -74,7 +73,7 @@ function MindfulnessTimer({ initial = 60 }) {
 
 function App() {
   return (
-    <div className="watch-bg">
+    <div className="watch-bg ">
       <h2 className="app-title">正念冥想</h2>
       <BreathingCircle duration={4000} />
       <MindfulnessTimer initial={60} />
