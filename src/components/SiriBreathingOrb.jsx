@@ -6,6 +6,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
   const [phase, setPhase] = useState('inhale');
   const [progress, setProgress] = useState(0);
   const [colorIndex, setColorIndex] = useState(0);
+  const [isColorTransitioning, setIsColorTransitioning] = useState(false);
   const requestRef = useRef();
   const startTime = useRef();
   const phaseCountRef = useRef(0); // 简单计数器
@@ -74,12 +75,15 @@ function SiriBreathingOrb({ duration = 4000 }) {
         const newPhase = phase === 'inhale' ? 'exhale' : 'inhale';
         
         console.log('Phase:', phaseCountRef.current, phase, '->', newPhase);
-        
-        // 每6个相位切换一次颜色（约24秒）
+
+        // 每1个相位切换一次颜色（约4秒）
         if (phaseCountRef.current > 0 && phaseCountRef.current % 1 === 0) {
           const newColorIndex = (colorIndex + 1) % colorSchemes.length;
           console.log('Color change:', colorIndex, '->', newColorIndex);
+          setIsColorTransitioning(true);
           setColorIndex(newColorIndex);
+          // 1秒后结束过渡动画
+          setTimeout(() => setIsColorTransitioning(false), 1000);
         }
         
         setPhase(newPhase);
@@ -112,7 +116,8 @@ function SiriBreathingOrb({ duration = 4000 }) {
           style={{
             transform: `scale(${scale * 1.6})`,
             opacity: glowIntensity * 0.4,
-            background: `radial-gradient(circle, ${currentColors.tertiary}20 0%, transparent 70%)`
+            background: `radial-gradient(circle, ${currentColors.tertiary}20 0%, transparent 70%)`,
+            transition: isColorTransitioning ? 'background 1s ease-in-out' : 'none'
           }}
         />
         
@@ -122,7 +127,8 @@ function SiriBreathingOrb({ duration = 4000 }) {
           style={{
             transform: `scale(${scale * 1.3})`,
             opacity: glowIntensity * 0.6,
-            background: `radial-gradient(circle, ${currentColors.secondary}30 0%, transparent 60%)`
+            background: `radial-gradient(circle, ${currentColors.secondary}30 0%, transparent 60%)`,
+            transition: isColorTransitioning ? 'background 1s ease-in-out' : 'none'
           }}
         />
         
@@ -145,7 +151,8 @@ function SiriBreathingOrb({ duration = 4000 }) {
               0 0 ${100 * glowIntensity}px ${currentColors.secondary}44,
               0 0 ${140 * glowIntensity}px ${currentColors.tertiary}22,
               inset 0 0 40px ${currentColors.primary}33
-            `
+            `,
+            transition: isColorTransitioning ? 'background 1s ease-in-out, box-shadow 1s ease-in-out' : 'none'
           }}
         >
           {/* 内部流动效果 */}
@@ -160,7 +167,8 @@ function SiriBreathingOrb({ duration = 4000 }) {
                   ${currentColors.tertiary}40 240deg,
                   ${currentColors.primary}40 360deg
                 )
-              `
+              `,
+              transition: isColorTransitioning ? 'background 1s ease-in-out' : 'none'
             }}
           />
           
@@ -199,20 +207,32 @@ function SiriBreathingOrb({ duration = 4000 }) {
         </AnimatePresence>
       </div>
       
-      <motion.div 
-        className="siri-breath-label"
-        animate={{
-          opacity: [0.7, 1, 0.7],
-          scale: [0.95, 1, 0.95]
-        }}
-        transition={{
-          duration: duration / 1000,
-          ease: "easeInOut"
-        }}
-      >
-        <span className="phase-text">{phase === 'inhale' ? '吸气' : '呼气'}</span>
-        <span className="color-name">{currentColors.name}</span>
-      </motion.div>
+      <div className="siri-breath-label">
+        <motion.span 
+          className="phase-text"
+          animate={{
+            opacity: [0.7, 1, 0.7]
+          }}
+          transition={{
+            duration: duration / 1000,
+            ease: "easeInOut"
+          }}
+        >
+          {phase === 'inhale' ? '吸气' : '呼气'}
+        </motion.span>
+        <AnimatePresence mode="wait">
+          <motion.span 
+            className="color-name"
+            key={colorIndex} // 强制重新渲染以触发动画
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          >
+            {currentColors.name}
+          </motion.span>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -112,13 +112,16 @@
   filter: blur(0.5px);
 }
 
-/* 呼吸标签 */
+/* 呼吸标签 - 固定位置 */
 .siri-breath-label {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
   text-align: center;
+  position: relative;
+  min-height: 60px; /* 固定高度防止跳动 */
+  justify-content: center;
 }
 
 .phase-text {
@@ -127,6 +130,8 @@
   color: #e0e3e6;
   letter-spacing: 0.2em;
   text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+  position: relative;
+  z-index: 1;
 }
 
 .color-name {
@@ -135,6 +140,12 @@
   color: #a0a3a6;
   letter-spacing: 0.1em;
   opacity: 0.8;
+  position: relative;
+  z-index: 1;
+  min-height: 1.2em; /* 防止高度变化 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 响应式设计 */
