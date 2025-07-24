@@ -35,10 +35,12 @@ function BreathingCircle({ duration = 4000 }) {
 
   return (
     <div className="breath-container">
-      <div
-        className="breath-circle"
-        style={{ width: size, height: size }}
-      />
+      <div className="breath-circle-wrapper">
+        <div
+          className="breath-circle"
+          style={{ width: size, height: size }}
+        />
+      </div>
       <div className="breath-label">{phase === 'inhale' ? '吸气' : '呼气'}</div>
     </div>
   );
