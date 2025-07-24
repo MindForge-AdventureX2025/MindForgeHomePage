@@ -90,7 +90,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
     return () => cancelAnimationFrame(animationFrame);
   }, [phase, duration, colorSchemes.length, colorIndex]);
 
-  // 计算缩放比例 (0.8 到 1.4)
+  // 计算缩放比例 (0.8 到 1.4) - 实时跟随呼吸进度
   const scaleMin = 0.8, scaleMax = 1.4;
   const scale = phase === 'inhale'
     ? scaleMin + (scaleMax - scaleMin) * progress
@@ -105,50 +105,32 @@ function SiriBreathingOrb({ duration = 4000 }) {
     <div className="siri-breath-container">
       <div className="siri-orb-wrapper">
         {/* 外层光晕环 */}
-        <motion.div
+        <div
           className="siri-glow-ring outer"
-          animate={{
-            scale: scale * 1.6,
-            opacity: glowIntensity * 0.4
-          }}
-          transition={{
-            duration: duration / 1000,
-            ease: "easeInOut"
-          }}
           style={{
+            transform: `scale(${scale * 1.6})`,
+            opacity: glowIntensity * 0.4,
             background: `radial-gradient(circle, ${currentColors.tertiary}20 0%, transparent 70%)`,
             transition: isTransitioning ? 'background 0.8s ease-in-out' : 'none'
           }}
         />
         
         {/* 中层光晕环 */}
-        <motion.div
+        <div
           className="siri-glow-ring middle"
-          animate={{
-            scale: scale * 1.3,
-            opacity: glowIntensity * 0.6
-          }}
-          transition={{
-            duration: duration / 1000,
-            ease: "easeInOut"
-          }}
           style={{
+            transform: `scale(${scale * 1.3})`,
+            opacity: glowIntensity * 0.6,
             background: `radial-gradient(circle, ${currentColors.secondary}30 0%, transparent 60%)`,
             transition: isTransitioning ? 'background 0.8s ease-in-out' : 'none'
           }}
         />
         
         {/* 主体球 */}
-        <motion.div
+        <div
           className="siri-main-orb"
-          animate={{
-            scale: scale,
-          }}
-          transition={{
-            duration: duration / 1000,
-            ease: "easeInOut"
-          }}
           style={{
+            transform: `scale(${scale})`,
             background: `
               radial-gradient(
                 circle at 30% 30%, 
@@ -186,7 +168,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
           
           {/* 高光效果 */}
           <div className="siri-highlight" />
-        </motion.div>
+        </div>
         
         {/* 粒子效果 */}
         <AnimatePresence>
@@ -203,8 +185,8 @@ function SiriBreathingOrb({ duration = 4000 }) {
               animate={{
                 scale: [0, 1, 0],
                 opacity: [0, glowIntensity * 0.8, 0],
-                x: Math.cos(i * 60 * Math.PI / 180) * 120 * scale,
-                y: Math.sin(i * 60 * Math.PI / 180) * 120 * scale,
+                x: Math.cos(i * 60 * Math.PI / 180) * 100 * scale,
+                y: Math.sin(i * 60 * Math.PI / 180) * 100 * scale,
               }}
               transition={{
                 duration: duration / 1000,
