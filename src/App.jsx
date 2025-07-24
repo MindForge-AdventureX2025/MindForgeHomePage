@@ -73,11 +73,9 @@ function MindfulnessTimer({ initial = 60 }) {
 function App() {
   return (
     <div className="watch-bg">
-      <div className="watch-frame">
-        <h2 className="app-title">正念冥想</h2>
-        <BreathingCircle duration={4000} />
-        <MindfulnessTimer initial={60} />
-      </div>
+      <h2 className="app-title">正念冥想</h2>
+      <BreathingCircle duration={4000} />
+      <MindfulnessTimer initial={60} />
     </div>
   );
 }
