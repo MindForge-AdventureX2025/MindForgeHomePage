@@ -6,10 +6,12 @@ function SiriBreathingOrb({ duration = 4000 }) {
   const [phase, setPhase] = useState('inhale');
   const [progress, setProgress] = useState(0);
   const [colorIndex, setColorIndex] = useState(0);
-  const [isColorTransitioning, setIsColorTransitioning] = useState(false);
+  const [colorTransitionProgress, setColorTransitionProgress] = useState(0);
   const requestRef = useRef();
   const startTime = useRef();
-  const phaseCountRef = useRef(0); // 简单计数器
+  const phaseCountRef = useRef(0);
+  const colorStartTimeRef = useRef(null); // 颜色过渡的独立计时器
+  const colorDuration = 8000; // 颜色过渡持续8秒
 
   // Siri风格的颜色组合 - 更自然的渐变色彩
   const colorSchemes = [
@@ -52,44 +54,77 @@ function SiriBreathingOrb({ duration = 4000 }) {
   ];
 
   const currentColors = colorSchemes[colorIndex];
+  const nextColors = colorSchemes[(colorIndex + 1) % colorSchemes.length];
   
-  // 基于相位计数简单切换颜色
-  const colorTransitionProgress = phase === 'inhale' && phaseCountRef.current > 0 && (phaseCountRef.current % 8 === 0 || phaseCountRef.current % 8 === 1) 
-    ? progress 
-    : 0;
+  // 颜色混合函数
+  const mixColors = (color1, color2, ratio) => {
+    if (ratio === 0) return color1;
+    if (ratio === 1) return color2;
+    
+    const hex1 = color1.replace('#', '');
+    const hex2 = color2.replace('#', '');
+    
+    const r1 = parseInt(hex1.substr(0, 2), 16);
+    const g1 = parseInt(hex1.substr(2, 2), 16);
+    const b1 = parseInt(hex1.substr(4, 2), 16);
+    
+    const r2 = parseInt(hex2.substr(0, 2), 16);
+    const g2 = parseInt(hex2.substr(2, 2), 16);
+    const b2 = parseInt(hex2.substr(4, 2), 16);
+    
+    const r = Math.round(r1 + (r2 - r1) * ratio);
+    const g = Math.round(g1 + (g2 - g1) * ratio);
+    const b = Math.round(b1 + (b2 - b1) * ratio);
+    
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+  };
+  
+  // 混合后的显示颜色，使用独立的颜色过渡进度
+  const displayColors = {
+    primary: mixColors(currentColors.primary, nextColors.primary, colorTransitionProgress),
+    secondary: mixColors(currentColors.secondary, nextColors.secondary, colorTransitionProgress),
+    tertiary: mixColors(currentColors.tertiary, nextColors.tertiary, colorTransitionProgress),
+    name: colorTransitionProgress < 0.5 ? currentColors.name : nextColors.name
+  };
 
   useEffect(() => {
     let animationFrame;
     
     function animateBreath(ts) {
       if (!startTime.current) startTime.current = ts;
-      const elapsed = ts - startTime.current;
-      let percent = Math.min(elapsed / duration, 1);
-      setProgress(percent);
+      if (!colorStartTimeRef.current) colorStartTimeRef.current = ts;
       
-      if (percent < 1) {
-        animationFrame = requestAnimationFrame(animateBreath);
-      } else {
-        // 完成一个相位
+      // 呼吸动画进度
+      const breathElapsed = ts - startTime.current;
+      let breathPercent = Math.min(breathElapsed / duration, 1);
+      setProgress(breathPercent);
+      
+      // 颜色过渡进度（独立计时）
+      const colorElapsed = ts - colorStartTimeRef.current;
+      let colorPercent = Math.min(colorElapsed / colorDuration, 1);
+      setColorTransitionProgress(colorPercent);
+      
+      // 呼吸相位完成
+      if (breathPercent >= 1) {
         phaseCountRef.current++;
         const newPhase = phase === 'inhale' ? 'exhale' : 'inhale';
-        
         console.log('Phase:', phaseCountRef.current, phase, '->', newPhase);
-
-        // 每1个相位切换一次颜色（约4秒）
-        if (phaseCountRef.current > 0 && phaseCountRef.current % 1 === 0) {
-          const newColorIndex = (colorIndex + 1) % colorSchemes.length;
-          console.log('Color change:', colorIndex, '->', newColorIndex);
-          setIsColorTransitioning(true);
-          setColorIndex(newColorIndex);
-          // 1秒后结束过渡动画
-          setTimeout(() => setIsColorTransitioning(false), 1000);
-        }
         
         setPhase(newPhase);
         setProgress(0);
         startTime.current = null;
       }
+      
+      // 颜色过渡完成
+      if (colorPercent >= 1) {
+        const newColorIndex = (colorIndex + 1) % colorSchemes.length;
+        console.log('Color transition completed:', colorIndex, '->', newColorIndex);
+        setColorIndex(newColorIndex);
+        setColorTransitionProgress(0);
+        colorStartTimeRef.current = null;
+      }
+      
+      animationFrame = requestAnimationFrame(animateBreath);
     }
     
     animationFrame = requestAnimationFrame(animateBreath);
@@ -116,8 +151,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
           style={{
             transform: `scale(${scale * 1.6})`,
             opacity: glowIntensity * 0.4,
-            background: `radial-gradient(circle, ${currentColors.tertiary}20 0%, transparent 70%)`,
-            transition: isColorTransitioning ? 'background 1s ease-in-out' : 'none'
+            background: `radial-gradient(circle, ${displayColors.tertiary}20 0%, transparent 70%)`
           }}
         />
         
@@ -127,8 +161,7 @@ function SiriBreathingOrb({ duration = 4000 }) {
           style={{
             transform: `scale(${scale * 1.3})`,
             opacity: glowIntensity * 0.6,
-            background: `radial-gradient(circle, ${currentColors.secondary}30 0%, transparent 60%)`,
-            transition: isColorTransitioning ? 'background 1s ease-in-out' : 'none'
+            background: `radial-gradient(circle, ${displayColors.secondary}30 0%, transparent 60%)`
           }}
         />
         
@@ -140,19 +173,18 @@ function SiriBreathingOrb({ duration = 4000 }) {
             background: `
               radial-gradient(
                 circle at 30% 30%, 
-                ${currentColors.primary}ff 0%, 
-                ${currentColors.secondary}cc 40%, 
-                ${currentColors.tertiary}88 70%,
+                ${displayColors.primary}ff 0%, 
+                ${displayColors.secondary}cc 40%, 
+                ${displayColors.tertiary}88 70%,
                 transparent 100%
               )
             `,
             boxShadow: `
-              0 0 ${60 * glowIntensity}px ${currentColors.primary}66,
-              0 0 ${100 * glowIntensity}px ${currentColors.secondary}44,
-              0 0 ${140 * glowIntensity}px ${currentColors.tertiary}22,
-              inset 0 0 40px ${currentColors.primary}33
-            `,
-            transition: isColorTransitioning ? 'background 1s ease-in-out, box-shadow 1s ease-in-out' : 'none'
+              0 0 ${60 * glowIntensity}px ${displayColors.primary}66,
+              0 0 ${100 * glowIntensity}px ${displayColors.secondary}44,
+              0 0 ${140 * glowIntensity}px ${displayColors.tertiary}22,
+              inset 0 0 40px ${displayColors.primary}33
+            `
           }}
         >
           {/* 内部流动效果 */}
@@ -162,13 +194,12 @@ function SiriBreathingOrb({ duration = 4000 }) {
               background: `
                 conic-gradient(
                   from ${progress * 360}deg,
-                  ${currentColors.primary}40 0deg,
-                  ${currentColors.secondary}60 120deg,
-                  ${currentColors.tertiary}40 240deg,
-                  ${currentColors.primary}40 360deg
+                  ${displayColors.primary}40 0deg,
+                  ${displayColors.secondary}60 120deg,
+                  ${displayColors.tertiary}40 240deg,
+                  ${displayColors.primary}40 360deg
                 )
-              `,
-              transition: isColorTransitioning ? 'background 1s ease-in-out' : 'none'
+              `
             }}
           />
           
@@ -223,13 +254,13 @@ function SiriBreathingOrb({ duration = 4000 }) {
         <AnimatePresence mode="wait">
           <motion.span 
             className="color-name"
-            key={colorIndex} // 强制重新渲染以触发动画
+            key={`${colorIndex}-${displayColors.name}`} // 使用颜色名称作为key
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            {currentColors.name}
+            {displayColors.name}
           </motion.span>
         </AnimatePresence>
       </div>
