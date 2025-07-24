@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 
@@ -35,10 +34,12 @@ function BreathingCircle({ duration = 4000 }) {
 
   return (
     <div className="breath-container">
-      <div
-        className="breath-circle"
-        style={{ width: size, height: size }}
-      />
+      <div className="breath-circle-wrapper">
+        <div
+          className="breath-circle"
+          style={{ width: size, height: size }}
+        />
+      </div>
       <div className="breath-label">{phase === 'inhale' ? '吸气' : '呼气'}</div>
     </div>
   );
@@ -72,7 +73,7 @@ function MindfulnessTimer({ initial = 60 }) {
 
 function App() {
   return (
-    <div className="watch-bg">
+    <div className="watch-bg ">
       <h2 className="app-title">正念冥想</h2>
       <BreathingCircle duration={4000} />
       <MindfulnessTimer initial={60} />
